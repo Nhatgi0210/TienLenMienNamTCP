@@ -12,7 +12,7 @@ public class Move {
     private final Card highest;  // lá mạnh nhất trong bộ
 
     public enum ComboType {
-        SINGLE, PAIR, TRIPLE, FOUR_KIND, STRAIGHT, INVALID
+        SINGLE, PAIR, TRIPLE, FOUR_KIND, STRAIGHT, INVALID, THREE_PAIRS,FOUR_PAIRS
     }
 
     public Move(List<Card> cards) {

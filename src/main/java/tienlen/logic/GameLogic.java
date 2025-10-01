@@ -37,6 +37,36 @@ public class GameLogic {
              if (allSame) return Move.ComboType.FOUR_KIND;
          }
          // sảnh
+         if (size == 6) {
+        	    boolean isThreePairs = true;
+        	    for (int i = 0; i < 6; i += 2) {
+        	        if (cards.get(i).getRank() != cards.get(i + 1).getRank()) {
+        	            isThreePairs = false;
+        	            break;
+        	        }
+        	        if (i > 0 && cards.get(i).getRank() != cards.get(i - 2).getRank() + 1) {
+        	            isThreePairs = false;
+        	            break;
+        	        }
+        	    }
+        	    if (isThreePairs) return Move.ComboType.THREE_PAIRS;
+        	}
+
+        	// 4 đôi thông
+        if (size == 8) {
+        	    boolean isFourPairs = true;
+        	    for (int i = 0; i < 8; i += 2) {
+        	        if (cards.get(i).getRank() != cards.get(i + 1).getRank()) {
+        	            isFourPairs = false;
+        	            break;
+        	        }
+        	        if (i > 0 && cards.get(i).getRank() != cards.get(i - 2).getRank() + 1) {
+        	            isFourPairs = false;
+        	            break;
+        	        }
+        	    }
+        	    if (isFourPairs) return Move.ComboType.FOUR_PAIRS;
+        	}
          if (size >= 3) {
         	 for(int i = 1; i < cards.size(); i++){
         		 if (cards.get(i).getRank() != cards.get(i-1).getRank()+1) return Move.ComboType.INVALID;
@@ -55,15 +85,19 @@ public class GameLogic {
 	            prev.getLength() == next.getLength()) {
 	            return next.getHighest().compareTo(prev.getHighest()) > 0;
 	        }
-
-	        // Trường hợp đặc biệt: tứ quý chặt 2
-	        if (prev.getComboType() == Move.ComboType.SINGLE &&
-	            prev.getHighest().getRank() == 15 &&
-	            next.getComboType() == Move.ComboType.FOUR_KIND) {
-	            return true;
+	        // 2 bị chặt
+	        if (prev.getComboType() == Move.ComboType.SINGLE && prev.getHighest().getRank() == 15) {
+	            return next.getComboType() == Move.ComboType.FOUR_KIND
+	                || next.getComboType() == Move.ComboType.THREE_PAIRS
+	                || next.getComboType() == Move.ComboType.FOUR_PAIRS;
 	        }
-
-	        // TODO: thêm 3 đôi thông, 4 đôi thông
+	        //Đôi 2 bị chặt 
+	        if (prev.getComboType() == Move.ComboType.PAIR && prev.getHighest().getRank() == 15) {
+	            return next.getComboType() == Move.ComboType.FOUR_KIND
+	                || next.getComboType() == Move.ComboType.FOUR_PAIRS;
+	        }
+	        if (prev.getComboType() == Move.ComboType.FOUR_KIND && next.getComboType() == Move.ComboType.FOUR_PAIRS)
+	            return true;
 
 	        return false;
 	    }
