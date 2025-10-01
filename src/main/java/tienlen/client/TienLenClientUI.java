@@ -155,8 +155,8 @@ public class TienLenClientUI{
         
         newGameButton = new Button("New Game");
         newGameButton.getStyleClass().add("control-btn");
-        newGameButton.setVisible(false);    // ẩn ban đầu
-        newGameButton.setManaged(false);    // không chiếm layout khi ẩn
+        newGameButton.setVisible(true);    
+        newGameButton.setManaged(true);   
 
         newGameButton.setOnAction(e -> {
             Message ms = new Message("NEWGAME", username);
@@ -175,7 +175,7 @@ public class TienLenClientUI{
         VBox rightPane = new VBox();
         rightPane.setPrefWidth(250);
 
-        chatArea = new TextArea("Trò chơi sẽ bắt đầu khi đủ 4 người chơi\n");
+        chatArea = new TextArea("Trò chơi sẽ bắt đầu khi có hơn 2 người chơi\n");
         chatArea.setEditable(false);
         chatArea.setWrapText(true);
 
