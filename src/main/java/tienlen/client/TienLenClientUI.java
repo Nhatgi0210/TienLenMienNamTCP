@@ -160,6 +160,7 @@ public class TienLenClientUI{
 
         newGameButton.setOnAction(e -> {
             Message ms = new Message("NEWGAME", username);
+            lastMove = null;
             out.println(Protocol.encode(ms));
             newGameButton.setVisible(false);
             newGameButton.setManaged(false);
@@ -332,6 +333,8 @@ public class TienLenClientUI{
         playButton.setDisable(false);
         passButton.setDisable(false);
         playerHand.setDisable(false);
+        newGameButton.setVisible(false);
+        newGameButton.setManaged(false);
     }
 
     public List<ToggleButton> getCardButtons() {

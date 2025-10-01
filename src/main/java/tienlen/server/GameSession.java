@@ -70,6 +70,10 @@ public class GameSession {
 
     public void startGame() {
     	if (players.size() < 2) return;
+    	lastMove = null;
+    	for (Player p : players) {
+            p.getHand().clear();
+        }
         Deck deck = new Deck();
         deck.shuffle();
 
