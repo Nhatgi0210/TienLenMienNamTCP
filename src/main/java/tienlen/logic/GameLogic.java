@@ -36,7 +36,7 @@ public class GameLogic {
              boolean allSame = cards.stream().allMatch(c -> c.getRank() == cards.get(0).getRank());
              if (allSame) return Move.ComboType.FOUR_KIND;
          }
-         // sảnh
+         
          if (size == 6) {
         	    boolean isThreePairs = true;
         	    for (int i = 0; i < 6; i += 2) {
@@ -67,8 +67,10 @@ public class GameLogic {
         	    }
         	    if (isFourPairs) return Move.ComboType.FOUR_PAIRS;
         	}
+        	// sảnh
          if (size >= 3) {
         	 for(int i = 1; i < cards.size(); i++){
+        		 if (cards.get(i).getRank() == 15) return Move.ComboType.INVALID;
         		 if (cards.get(i).getRank() != cards.get(i-1).getRank()+1) return Move.ComboType.INVALID;
         	 }
         	 return Move.ComboType.STRAIGHT;

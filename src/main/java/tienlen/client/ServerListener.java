@@ -117,6 +117,18 @@ public class ServerListener implements Runnable {
                     	    });
                     	    break;
                     }
+                    case "END":{
+                    	 Platform.runLater(() -> {
+                    		Alert alert = new Alert(Alert.AlertType.INFORMATION);
+             	            alert.setTitle("End game!");
+             	            alert.setHeaderText(null);
+             	            alert.setContentText("🎉 Các người chơi đã thoát! ván chơi kết thúc!");
+             	            alert.showAndWait();
+             	            gameTable.showNewGameButton();
+             	            gameTable.disableButton();
+                    	 });
+                    	break;
+                    }
                     default: {
                         System.out.println("Unknown message type: " + ms.getAction());
                         break;

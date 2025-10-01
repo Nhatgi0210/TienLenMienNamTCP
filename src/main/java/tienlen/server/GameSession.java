@@ -188,12 +188,8 @@ public class GameSession {
         setLastMove(move); 
         System.out.println(player.getName() +": " + player.getHand());
         if (player.hasNoCards()) {
-        	Message ms = new Message("WIN", player.getName());
+        	endGame(player.getName());
         	winnerIndex = players.indexOf(player);
-        	for (Player p : players) {
-                connections.get(p).sendMessage(Protocol.encode(ms));
-            }
-        	gameRunning = false;
             return;
         }
 
@@ -243,14 +239,14 @@ public class GameSession {
     }
 
 
-    public boolean isGameOver() {
-        for (Player p : players) {
-            if (p.hasNoCards()) {
-                return true;
-            }
-        }
-        return false;
-    }
+//    public boolean isGameOver() {
+//        for (Player p : players) {
+//            if (p.hasNoCards()) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     public Player getWinner() {
         for (Player p : players) {
@@ -274,5 +270,24 @@ public class GameSession {
         for (Player p : players) {
             connections.get(p).sendMessage(Protocol.encode(msg));
         }
+    }
+    public void endGame(String type) {
+    	if (type.equals("END")){
+    		Message ms = new Message("END", "");
+    		for(Player p : players) {
+    			connections.get(p).sendMessage(Protocol.encode(ms));
+    		}
+    	}
+    	else {
+    		Message ms = new Message("WIN", type);
+    		for (Player p : players) {
+    			connections.get(p).sendMessage(Protocol.encode(ms));
+    		}
+    	}
+    	
+    	
+        setGameRunning(false);
+        lastMove = null;
+        passedPlayers.clear();
     }
 }

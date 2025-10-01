@@ -98,6 +98,9 @@ public class ClientHandler implements Runnable {
             if (player != null) {
                 gameSession.removePlayer(player);
                 gameSession.broadcastPlayerList();
+                if (gameSession.getPlayers().size() < 2) {
+                	gameSession.endGame("END");
+                }
             }
             try {
                 socket.close();
