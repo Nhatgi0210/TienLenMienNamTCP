@@ -55,7 +55,6 @@ public class ClientHandler implements Runnable {
 
             String line;
             while ((line = in.readLine()) != null) {
-            	System.out.println(line);
             	Message ms = Protocol.decode(line);
             	switch (ms.getAction()) {
 				case "JOIN": {
@@ -73,7 +72,13 @@ public class ClientHandler implements Runnable {
 					break;
 				}
 				case "NEWGAME":{
-					gameSession.startGame();
+					 if (!gameSession.isGameRunning()) {
+					        gameSession.startGame();
+					    } else {
+					        Message msg = new Message("CHAT", "Ván đang diễn ra, không thể bắt đầu mới!");
+					        sendMessage(Protocol.encode(msg));
+					    }
+					
 					break;
 				}
 				case "CHAT":

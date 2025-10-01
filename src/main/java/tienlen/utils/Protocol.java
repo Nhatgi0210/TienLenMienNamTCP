@@ -9,7 +9,6 @@ public class Protocol {
         return msg.getAction() + "|" + (msg.getData() == null ? "" : msg.getData());
     }
 
-    
     public static Message decode(String raw) {
         String[] parts = raw.split("\\|", 2); 
         String action = parts[0];

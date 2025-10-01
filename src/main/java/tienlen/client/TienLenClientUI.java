@@ -43,7 +43,6 @@ public class TienLenClientUI{
     public VBox getPlayerListBox() { return playerListBox; }
     public TextArea getChatArea() { return chatArea; }
     public List<VBox> getPlayerBoxes(){return playerBoxes;}
- 
     private String currentTurn = null;
 
     // Map tên -> VBox playerBox

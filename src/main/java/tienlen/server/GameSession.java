@@ -19,14 +19,21 @@ public class GameSession {
     private final Set<Player> passedPlayers = new HashSet<>(); // Người đã PASS vòng này
     private Map<Player, ClientHandler> connections = new HashMap<>();
     private int winnerIndex = -1;
-  
+    
+    private boolean gameRunning = false; 
+
+    public synchronized boolean isGameRunning() {
+        return gameRunning;
+    }
+
+    private synchronized void setGameRunning(boolean running) {
+        gameRunning = running;
+    }
     public synchronized void addPlayer(Player player,ClientHandler handler) {
         players.add(player);
         connections.put(player, handler);
         broadcastPlayerList();
-        if (players.size() == MAX_PLAYERS) {
-            startGame();
-        }
+        
     }
     public void broadcastPlayerList() {
         List<String> playerNames = new ArrayList<>();
@@ -69,7 +76,9 @@ public class GameSession {
     }
 
     public void startGame() {
-    	if (players.size() < 2) return;
+    	if (gameRunning) return;
+      	if (players.size() < 2) return;
+      	gameRunning = true;
     	lastMove = null;
     	for (Player p : players) {
             p.getHand().clear();
@@ -184,6 +193,7 @@ public class GameSession {
         	for (Player p : players) {
                 connections.get(p).sendMessage(Protocol.encode(ms));
             }
+        	gameRunning = false;
             return;
         }
 
