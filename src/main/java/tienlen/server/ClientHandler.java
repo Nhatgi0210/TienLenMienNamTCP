@@ -1,0 +1,102 @@
+package tienlen.server;
+
+import tienlen.model.Card;
+import tienlen.model.Message;
+import tienlen.model.Player;
+import tienlen.utils.Protocol;
+
+import java.io.*;
+import java.net.Socket;
+import java.rmi.server.UID;
+import java.util.List;
+import java.util.UUID;
+
+public class ClientHandler implements Runnable {
+	private GameSession gameSession;
+    private final Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private Player player;
+
+    public ClientHandler(Socket socket, GameSession gameSession) {
+        this.socket = socket;
+        this.gameSession = gameSession;
+    }
+
+    public void setPlayer(Player player) {
+        this.player = player;
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public void sendHand(List<Card> hand) {
+        StringBuilder sb = new StringBuilder("HAND|");
+        for (Card c : hand) {
+            sb.append(c.toString()).append(",");
+        }
+        sendMessage(sb.toString());
+    }
+
+    public void sendMessage(String msg) {
+    	 out.println(msg);
+    	 out.flush();
+    	 if (out.checkError()) {
+    	        System.out.println("Error sending message to client!");
+    	    }
+    }
+
+    @Override
+    public void run() {
+        try {
+            out = new PrintWriter(socket.getOutputStream());
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            String line;
+            while ((line = in.readLine()) != null) {
+            	System.out.println(line);
+            	Message ms = Protocol.decode(line);
+            	switch (ms.getAction()) {
+				case "JOIN": {
+					player = new Player(ms.getData());
+					gameSession.addPlayer(player, this);
+					break;
+				}
+				case "PLAY":{
+					String moveData = ms.getData();
+                    gameSession.processMove(this, moveData);
+					break;
+				}
+				case "PASS":{
+					gameSession.processMove(this, "PASS");
+					break;
+				}
+				case "NEWGAME":{
+					gameSession.startGame();
+					break;
+				}
+				case "CHAT":
+				    String chatMsg = ms.getData(); 
+				    gameSession.chat(chatMsg);
+				    break;
+
+				default:
+					throw new IllegalArgumentException("Unexpected value: " + ms.getAction());
+				}
+            	
+            }
+        } catch (IOException e) {
+            System.out.println("⚠ Kết nối không thành công với " + player);
+        } finally {
+            // Luôn remove khi client thoát
+            if (player != null) {
+                gameSession.removePlayer(player);
+                gameSession.broadcastPlayerList();
+            }
+            try {
+                socket.close();
+            } catch (IOException ignored) {}
+        }
+    }
+}

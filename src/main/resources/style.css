@@ -1,0 +1,86 @@
+.root {
+    -fx-background-color: linear-gradient(to bottom right, #e3f2fd, #cfd8dc);
+}
+
+/* ==== Player Hand ==== */
+.player-hand {
+    -fx-background-color: rgba(255, 255, 255, 0.85);
+    -fx-padding: 10;
+    -fx-border-color: #90caf9;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.card {
+    -fx-min-width: 80px;
+    -fx-min-height: 110px;
+    -fx-background-color: white;
+    -fx-border-color: #1976d2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.card:selected {
+    -fx-border-color: #d32f2f;
+    -fx-border-width: 2px;
+}
+
+/* ==== Played Cards ==== */
+.played-cards {
+    -fx-background-color: rgba(255, 255, 255, 0.6);
+    -fx-padding: 15;
+    -fx-border-color: #64b5f6;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.played-card {
+    -fx-min-width: 60px;
+    -fx-min-height: 90px;
+    -fx-background-color: white;
+    -fx-border-color: #388e3c;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-alignment: center;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+/* ==== Control Buttons ==== */
+.control-btn {
+    -fx-background-color: #64b5f6;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 8;
+}
+
+.control-btn:hover {
+    -fx-background-color: #42a5f5;
+}
+
+/* ==== Chat Box ==== */
+.chat-box {
+    -fx-background-color: #fdfdfd;
+    -fx-border-color: #90caf9;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+/* ==== Player List ==== */
+.player-list {
+    -fx-background-color: #fdfdfd;
+    -fx-border-color: #90caf9;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+/* ==== Player Box (Trái/Trên/Phải) ==== */
+.player-box {
+    -fx-background-color: rgba(255, 255, 255, 0.7);
+    -fx-border-color: #64b5f6;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}

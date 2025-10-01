@@ -1,0 +1,11 @@
+tienlen\model\Card.class
+tienlen\model\Deck.class
+tienlen\model\GameState$PlayerInfo.class
+tienlen\model\GameState.class
+tienlen\clientfx\GameClientFX.class
+tienlen\client\GameClientApp.class
+tienlen\model\Card$Suit.class
+tienlen\server\GameServer$ClientSession.class
+CardTile.class
+TurnManager.class
+tienlen\server\GameServer.class
