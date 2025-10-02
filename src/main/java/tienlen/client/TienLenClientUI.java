@@ -269,6 +269,7 @@ public class TienLenClientUI{
     }
 
     public void highlightTurn(String currentPlayer) {
+    	if(currentPlayer == null) return;
     	this.currentTurn = currentPlayer;
     	for (VBox box : playerBoxes) {
             Label nameLabel = (Label) box.getChildren().get(1); 
@@ -311,6 +312,7 @@ public class TienLenClientUI{
                 }
             }
         }
+        highlightTurn(currentTurn);
     }
     public void addCardToHand(String cardText) {
         ToggleButton card = new ToggleButton(cardText);

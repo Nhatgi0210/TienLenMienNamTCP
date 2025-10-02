@@ -82,6 +82,7 @@ public class GameSession {
     	lastMove = null;
     	for (Player p : players) {
             p.getHand().clear();
+            p.setPlaying(true);
         }
         Deck deck = new Deck();
         deck.shuffle();
@@ -121,7 +122,7 @@ public class GameSession {
     public void nextTurn() {
     	  do {
               currentTurnIndex = (currentTurnIndex + 1) % players.size();
-          } while (passedPlayers.contains(players.get(currentTurnIndex)));
+          } while (passedPlayers.contains(players.get(currentTurnIndex)) || !players.get(currentTurnIndex).isPlaying());
     }
 
     public void handlePass(Player player) {
@@ -275,6 +276,7 @@ public class GameSession {
     	if (type.equals("END")){
     		Message ms = new Message("END", "");
     		for(Player p : players) {
+    			p.setPlaying(false);
     			connections.get(p).sendMessage(Protocol.encode(ms));
     		}
     	}
@@ -282,6 +284,7 @@ public class GameSession {
     		Message ms = new Message("WIN", type);
     		for (Player p : players) {
     			connections.get(p).sendMessage(Protocol.encode(ms));
+    			p.setPlaying(false);
     		}
     	}
     	

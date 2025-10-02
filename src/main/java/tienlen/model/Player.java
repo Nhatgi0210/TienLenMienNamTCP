@@ -14,10 +14,20 @@ public class Player {
         this.name = name;
         this.id = UUID.randomUUID();
     }
-   
+    private boolean isPlaying;
     
 
-    public List<Card> getHand() {
+    public boolean isPlaying() {
+		return isPlaying;
+	}
+
+
+	public void setPlaying(boolean isPlaying) {
+		this.isPlaying = isPlaying;
+	}
+
+
+	public List<Card> getHand() {
         return hand;
     }
     
