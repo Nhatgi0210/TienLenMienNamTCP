@@ -3,12 +3,16 @@ package tienlen.server;
 import tienlen.model.Card;
 import tienlen.model.Message;
 import tienlen.model.Player;
+import tienlen.utils.PasswordUtil;
 import tienlen.utils.Protocol;
 
+import java.awt.color.ICC_ColorSpace;
 import java.io.*;
 import java.net.Socket;
 import java.rmi.server.UID;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class ClientHandler implements Runnable {
@@ -57,6 +61,20 @@ public class ClientHandler implements Runnable {
             while ((line = in.readLine()) != null) {
             	Message ms = Protocol.decode(line);
             	switch (ms.getAction()) {
+            	case "LOGIN":{
+            		String data = ms.getData();
+            		Map<String, String> map = new HashMap<>();
+
+            		for (String pair : data.split("&")) {
+            		    String[] kv = pair.split("=", 2);
+            		    map.put(kv[0], kv[1]);
+            		}
+
+            		String username = map.get("user");
+            		String password = map.get("pass");
+            		
+            		break;
+            	}
 				case "JOIN": {
 					player = new Player(ms.getData());
 					gameSession.addPlayer(player, this);

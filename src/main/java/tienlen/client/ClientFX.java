@@ -11,6 +11,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import tienlen.model.Message;
+import tienlen.utils.PasswordUtil;
 import tienlen.utils.Protocol;
 
 import java.io.*;
@@ -25,9 +26,12 @@ public class ClientFX extends Application {
     private TextField ipField;
     private Button connectBtn;
     private TextField nameField;
-    private Button joinBtn;
+    private Button loginBtn; 
     private TextArea logArea;
     private String myname;
+    private PasswordField passwordField;
+    private Button registerBtn;
+
     @Override
     public void start(Stage stage) {
 
@@ -45,15 +49,40 @@ public class ClientFX extends Application {
         HBox ipBox = new HBox(10, new Label("Server IP:"), ipField, connectBtn);
         ipBox.setAlignment(Pos.CENTER);
 
-        // Các thành phần nhập tên và JOIN
+     // Nhập tên đăng nhập
         nameField = new TextField();
         nameField.setPrefWidth(150);
-        joinBtn = new Button("JOIN");
-        styleButton(joinBtn, "#2196F3", "#42A5F5"); // màu xanh dương tươi
-        joinBtn.setDisable(true);
 
-        HBox nameBox = new HBox(10, new Label("Tên bạn:"), nameField, joinBtn);
-        nameBox.setAlignment(Pos.CENTER);
+        // Nhập mật khẩu
+        passwordField = new PasswordField();
+        passwordField.setPrefWidth(150);
+
+        // Nút JOIN (đăng nhập)
+        loginBtn = new Button("ĐĂNG NHẬP");
+        styleButton(loginBtn, "#2196F3", "#42A5F5");
+        loginBtn.setDisable(true);
+
+        // Nút ĐĂNG KÝ
+        registerBtn = new Button("ĐĂNG KÝ");
+        styleButton(registerBtn, "#FF9800", "#FFB74D");
+        registerBtn.setDisable(true);
+
+        GridPane loginGrid = new GridPane();
+        loginGrid.setHgap(10);
+        loginGrid.setVgap(10);
+        loginGrid.setAlignment(Pos.CENTER);
+
+        loginGrid.add(new Label("Tên đăng nhập:"), 0, 0);
+        loginGrid.add(nameField, 1, 0);
+        loginGrid.add(new Label("Mật khẩu:"), 0, 1);
+        loginGrid.add(passwordField, 1, 1);
+
+        HBox btnBox = new HBox(15, loginBtn, registerBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        VBox loginBox = new VBox(15, loginGrid, btnBox);
+        loginBox.setAlignment(Pos.CENTER);
+
 
         // TextArea log
         logArea = new TextArea();
@@ -62,13 +91,13 @@ public class ClientFX extends Application {
         logArea.setStyle("-fx-control-inner-background: #FFFFFF; -fx-font-family: 'Consolas'; -fx-font-size: 12pt; -fx-background-radius: 10;");
 
         // Layout chính
-        VBox root = new VBox(20, title, ipBox, nameBox, logArea);
+        VBox root = new VBox(20, title, ipBox, loginBox, logArea);
         root.setPadding(new Insets(25));
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-background-color: #E0F7FA;"); // nền pastel xanh nhạt
 
         connectBtn.setOnAction(e -> connectToServer());
-        joinBtn.setOnAction(e -> joinGame());
+        loginBtn.setOnAction(e -> joinGame());
 
         Scene scene = new Scene(root, 480, 380);
         stage.setScene(scene);
@@ -95,7 +124,9 @@ public class ClientFX extends Application {
 
             log("✅ Kết nối thành công tới server " + host + ":" + port);
 
-            joinBtn.setDisable(false);
+            loginBtn.setDisable(false);
+            registerBtn.setDisable(false);
+
             connectBtn.setDisable(true);
             ipField.setDisable(true);
 
@@ -121,23 +152,36 @@ public class ClientFX extends Application {
         listenerThread.setDaemon(true);
         listenerThread.start();
     }
+ 
     private void joinGame() {
         String username = nameField.getText().trim();
-        if (username.isEmpty()) {
-            log("⚠ Vui lòng nhập tên.");
+        String password = passwordField.getText().trim();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            log("⚠ Vui lòng nhập đầy đủ tên và mật khẩu.");
             return;
         }
 
-        Message ms = new Message("JOIN", username);
-        out.println(Protocol.encode(ms));
-        log("▶ Đã gửi JOIN với tên: " + username);
-        this.myname = username;
-        joinBtn.setDisable(true);
-        nameField.setDisable(true);
+        String hashedPassword = PasswordUtil.hashSHA256(password);
+ 
+        Message ms = new Message(
+        	    "LOGIN",
+        	    "user=" + username + "&pass=" + hashedPassword
+        	);
 
-        // Chuyển sang giao diện bàn chơi
-        Platform.runLater(() -> showGameTable());
+        out.println(Protocol.encode(ms));
+
+        log("▶ Đã gửi LOGIN: " + username);
+        this.myname = username;
+
+        loginBtn.setDisable(true);
+        registerBtn.setDisable(true);
+        nameField.setDisable(true);
+        passwordField.setDisable(true);
+
+        Platform.runLater(this::showGameTable);
     }
+
     
 //    private void listenServer() {
 //        String line;
