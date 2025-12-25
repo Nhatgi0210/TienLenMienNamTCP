@@ -1,0 +1,25 @@
+CHANGES TO APPLY:
+
+File: ClientFX.java
+
+1. Line 107: Change from
+   Scene scene = new Scene(root, 480, 380);
+   To:
+   Scene scene = new Scene(root, 600, 500);
+
+2. Line 253: Change from
+   Scene scene = new Scene(root, 500, 450);
+   To:
+   Scene scene = new Scene(root, 600, 500);
+
+3. Line 371: Change from
+   Scene gameScene = new Scene(gameTable.createRootPane(), 1200, 800);
+   To:
+   Scene gameScene = new Scene(gameTable.createRootPane(), 1600, 1000);
+
+File: GameSession.java
+
+4. In endGame() method, after sending WIN message (around line 343), add:
+   broadcastPlayerList();
+   
+   This will update all players with the new balance information.

@@ -1,0 +1,9 @@
+Changes to make:
+
+1. ClientFX.java:
+   - Line 107: Scene scene = new Scene(root, 480, 380); -> Scene scene = new Scene(root, 600, 500);
+   - Line 253: Scene scene = new Scene(root, 500, 450); -> Scene scene = new Scene(root, 600, 500);
+   - Line 371: Scene gameScene = new Scene(gameTable.createRootPane(), 1200, 800); -> Scene gameScene = new Scene(gameTable.createRootPane(), 1600, 1000);
+
+2. GameSession.java:
+   - Add broadcastPlayerList() call at end of endGame() method after WIN message is sent

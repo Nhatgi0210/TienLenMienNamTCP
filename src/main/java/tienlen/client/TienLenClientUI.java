@@ -38,7 +38,11 @@ public class TienLenClientUI{
     private VBox topPlayerBox;
     private VBox rightPlayerBox;
     private Button newGameButton;
-    public HBox getPlayerHand() { return playerHand; }
+    private long myBalance = 0;     // Lưu số tiền hiện tại
+        private VBox myPlayerBox;       // Khung hiển thị tên + tiền của bản thân (góc dưới trái)
+        private Label myNameLabel;      // Tên của bản thân
+        private Label myBalanceLabel;   // Số tiền của bản thân
+        public HBox getPlayerHand() { return playerHand; }
     public HBox getPlayedCardsPane() { return playedCardsPane; }
     public VBox getPlayerListBox() { return playerListBox; }
     public TextArea getChatArea() { return chatArea; }
@@ -52,12 +56,25 @@ public class TienLenClientUI{
     private PrintWriter out;
     private BufferedReader in;
     private String username;
+    private String sessionDisplayName = "";
+    private long sessionBet = 10000;
+    private Runnable onExit;
 
     public TienLenClientUI(PrintWriter out, BufferedReader in, String username) {
         this.out = out;
         this.in = in;
         this.username = username;
     }
+
+    public TienLenClientUI(PrintWriter out, BufferedReader in, String username, String displayName, long bet) {
+        this.out = out;
+        this.in = in;
+        this.username = username;
+        this.sessionDisplayName = displayName == null ? "" : displayName;
+        this.sessionBet = bet;
+    }
+
+    public void setOnExit(Runnable r) { this.onExit = r; }
     
     
     public Move getLastMove() {
@@ -67,12 +84,13 @@ public class TienLenClientUI{
 		this.lastMove = lastMove;
 	}
 	
-	// Tạo avatar + tên cho người chơi
+    // Tạo avatar + tên + số dư cho người chơi
     private VBox createPlayerBox(String name) {
         Circle avatar = new Circle(25, Color.LIGHTGRAY);
         Label nameLabel = new Label(name);
+        Label balanceLabel = new Label("0");
 
-        VBox box = new VBox(5, avatar, nameLabel);
+        VBox box = new VBox(5, avatar, nameLabel, balanceLabel);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(10));
         box.getStyleClass().add("player-box");
@@ -99,6 +117,7 @@ public class TienLenClientUI{
         
         BorderPane root = new BorderPane();
         root.getStyleClass().add("root");
+
 
         // === Trung tâm bàn chơi ===
         StackPane tablePane = new StackPane();
@@ -129,8 +148,32 @@ public class TienLenClientUI{
         BorderPane.setAlignment(rightPlayerBox, Pos.CENTER_RIGHT);
 
         root.setLeft(leftPlayerBox);
-        root.setTop(topPlayerBox);
-        root.setRight(rightPlayerBox);
+        // Create a top bar with info box on the left and the top player box to its right
+        HBox infoBox = new HBox(8);
+        infoBox.setPadding(new Insets(6));
+        infoBox.setStyle("-fx-background-color: rgba(255,255,255,0.95); -fx-border-color: #ccc; -fx-border-radius: 6; -fx-background-radius: 6;");
+        Label nameLabel = new Label(sessionDisplayName == null || sessionDisplayName.isEmpty() ? "Bàn" : sessionDisplayName);
+        nameLabel.setStyle("-fx-font-weight: bold;");
+        Label betLabel = new Label("💰 " + sessionBet + " VND");
+        Button exitBtn = new Button("Exit");
+        exitBtn.setOnAction(e -> {
+            try { out.println(Protocol.encode(new Message("LEAVE_SESSION", ""))); } catch (Exception ex) {}
+            if (onExit != null) onExit.run();
+        });
+        infoBox.getChildren().addAll(nameLabel, betLabel, exitBtn);
+
+        HBox topBar = new HBox(12, infoBox, topPlayerBox);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setPadding(new Insets(4));
+        topBar.setFillHeight(true);
+        HBox.setHgrow(topBar, Priority.ALWAYS);
+        
+        // Add a spacer and rightPlayerBox to the right of topBar
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        topBar.getChildren().addAll(spacer, rightPlayerBox);
+
+        root.setTop(topBar);
 
         // === Khu vực bài của người chơi ===
         playerHand = new HBox(10);
@@ -167,9 +210,29 @@ public class TienLenClientUI{
         
         controlBox.getChildren().addAll(playButton, passButton,newGameButton);
 
-        VBox bottomBox = new VBox(10, controlBox, playerHand);
-        bottomBox.setAlignment(Pos.CENTER);
-        root.setBottom(bottomBox);
+            // === Tạo player box cho chính mình (góc dưới trái) ===
+            Circle myAvatar = new Circle(25, Color.LIGHTBLUE);
+            myNameLabel = new Label(username);
+            myNameLabel.setStyle("-fx-font-weight: bold;");
+            myBalanceLabel = new Label("0 VND");
+            myPlayerBox = new VBox(5, myAvatar, myNameLabel, myBalanceLabel);
+            myPlayerBox.setAlignment(Pos.CENTER);
+            myPlayerBox.setPadding(new Insets(10));
+            myPlayerBox.getStyleClass().add("player-box");
+            myPlayerBox.setStyle("-fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5;");
+
+            // Layout dưới cùng: player box bên trái + kiểm soát ở giữa + bài ở dưới
+            VBox centerControlBox = new VBox(10, controlBox, playerHand);
+            centerControlBox.setAlignment(Pos.CENTER);
+            centerControlBox.setFillWidth(true);
+
+            HBox bottomBox = new HBox(15);
+            bottomBox.setAlignment(Pos.BOTTOM_LEFT);
+            bottomBox.setPadding(new Insets(10));
+            bottomBox.getChildren().addAll(myPlayerBox, centerControlBox);
+            HBox.setHgrow(centerControlBox, Priority.ALWAYS);
+
+            root.setBottom(bottomBox);
 
         // === Khung Chat + DS người chơi (chia đôi dọc) ===
         VBox rightPane = new VBox();
@@ -280,35 +343,52 @@ public class TienLenClientUI{
             }
         }
     }
-    public void updatePlayerList(String[] names, String myName) {
+    public void updatePlayerList(String[] playersWithBalances, String myName) {
         playerListBox.getChildren().clear();
         playerListBox.getChildren().add(new Label("Players"));
-        for (String name : names) {
-            playerListBox.getChildren().add(new Label(name));
+
+        // Update my balance in header and fill player list
+        for (String entry : playersWithBalances) {
+            String[] parts = entry.split(":");
+            String name = parts[0];
+            String bal = parts.length > 1 ? parts[1] : "0";
+            if (name.equals(myName)) {
+                myBalance = Long.parseLong(bal);
+                    myBalanceLabel.setText(bal + " VND");
+            }
+            playerListBox.getChildren().add(new Label(name + " - " + bal));
         }
 
         int myIndex = -1;
-        for (int i = 0; i < names.length; i++) {
-            if (names[i].equals(myName)) {
-                myIndex = i;
-                break;
-            }
+        String[] names = new String[playersWithBalances.length];
+        for (int i = 0; i < playersWithBalances.length; i++) {
+            String[] parts = playersWithBalances[i].split(":");
+            names[i] = parts[0];
+            if (names[i].equals(myName)) myIndex = i;
         }
 
         if (myIndex != -1) {
             for (int offset = 1; offset < names.length; offset++) {
                 int pos = (myIndex + offset) % names.length;
-                String playerName = names[pos];
+                String[] parts = playersWithBalances[pos].split(":");
+                String playerName = parts[0];
+                String balance = parts.length > 1 ? parts[1] : "0";
 
                 if (offset == 1 && playerBoxes.size() > 0) {
                     Label nameLabel = (Label) playerBoxes.get(0).getChildren().get(1);
+                    Label balLabel = (Label) playerBoxes.get(0).getChildren().get(2);
                     nameLabel.setText(playerName);
+                    balLabel.setText(balance);
                 } else if (offset == 2 && playerBoxes.size() > 1) {
                     Label nameLabel = (Label) playerBoxes.get(1).getChildren().get(1);
+                    Label balLabel = (Label) playerBoxes.get(1).getChildren().get(2);
                     nameLabel.setText(playerName);
+                    balLabel.setText(balance);
                 } else if (offset == 3 && playerBoxes.size() > 2) {
                     Label nameLabel = (Label) playerBoxes.get(2).getChildren().get(1);
+                    Label balLabel = (Label) playerBoxes.get(2).getChildren().get(2);
                     nameLabel.setText(playerName);
+                    balLabel.setText(balance);
                 }
             }
         }
@@ -379,6 +459,16 @@ public class TienLenClientUI{
         newGameButton.setVisible(true);
         newGameButton.setManaged(true);
     }
+    
+    public void updateBalance(long newBalance) {
+        this.myBalance = newBalance;
+            myBalanceLabel.setText(newBalance + " VND");
+    }
+    
+    public long getMyBalance() {
+        return myBalance;
+    }
+    
     private void sendChat() {
         String text = chatInput.getText().trim();
         if (!text.isEmpty()) {

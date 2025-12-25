@@ -12,6 +12,7 @@ import java.util.*;
 
 public class GameSession {
     private final String sessionId;
+    private String displayName = "";
     private final List<Player> players = new ArrayList<>();
     private int currentTurnIndex = 0;
     private Move lastMove = null;
@@ -19,6 +20,8 @@ public class GameSession {
     private final Set<Player> passedPlayers = new HashSet<>(); // Người đã PASS vòng này
     private Map<Player, ClientHandler> connections = new HashMap<>();
     private int winnerIndex = -1;
+    private long betAmount = 10000; // Số tiền cược mỗi ván (10k VND)
+    private long totalPot = 0; // Tổng tiền trong pot
     
     private boolean gameRunning = false; 
 
@@ -29,18 +32,45 @@ public class GameSession {
     private synchronized void setGameRunning(boolean running) {
         gameRunning = running;
     }
+
+    public long getBetAmount() {
+        return betAmount;
+    }
+
+    public void setBetAmount(long amount) {
+        this.betAmount = amount;
+    }
+
+    public long getTotalPot() {
+        return totalPot;
+    }
+
+    public synchronized void addToPot(long amount) {
+        this.totalPot += amount;
+    }
+
+    public synchronized void resetPot() {
+        this.totalPot = 0;
+    }
+
     public synchronized void addPlayer(Player player,ClientHandler handler) {
         players.add(player);
         connections.put(player, handler);
+        
+        // Load balance từ database khi player join
+        UserManager userManager = UserManager.getInstance();
+        long balance = userManager.getBalance(player.getName());
+        player.setBalance(balance);
+        
         broadcastPlayerList();
         
     }
     public void broadcastPlayerList() {
-        List<String> playerNames = new ArrayList<>();
+        List<String> playerInfos = new ArrayList<>();
         for (Player p : players) {
-            playerNames.add(p.getName());
+            playerInfos.add(p.getName() + ":" + p.getBalance());
         }
-        Message msg = new Message("PLAYER_LIST", String.join(",", playerNames));
+        Message msg = new Message("PLAYER_LIST", String.join(",", playerInfos));
         for (Player p : players) {
             connections.get(p).sendMessage(Protocol.encode(msg));
         }
@@ -48,6 +78,19 @@ public class GameSession {
 
     public GameSession() {
         this.sessionId = UUID.randomUUID().toString();
+    }
+
+    public GameSession(String displayName) {
+        this.sessionId = UUID.randomUUID().toString();
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName == null || displayName.isEmpty() ? ("Bàn " + sessionId.substring(0, 6)) : displayName;
+    }
+
+    public void setDisplayName(String name) {
+        this.displayName = name;
     }
 
     public String getSessionId() {
@@ -272,25 +315,58 @@ public class GameSession {
             connections.get(p).sendMessage(Protocol.encode(msg));
         }
     }
-    public void endGame(String type) {
-    	if (type.equals("END")){
-    		Message ms = new Message("END", "");
-    		for(Player p : players) {
-    			p.setPlaying(false);
-    			connections.get(p).sendMessage(Protocol.encode(ms));
-    		}
-    	}
-    	else {
-    		Message ms = new Message("WIN", type);
-    		for (Player p : players) {
-    			connections.get(p).sendMessage(Protocol.encode(ms));
-    			p.setPlaying(false);
-    		}
-    	}
-    	
-    	
+    public void endGame(String winnerName) {
+        // Xử lý tiền khi ván kết thúc
+        if (!winnerName.equals("END")) {
+            // Tìm người thắng
+            Player winner = null;
+            for (Player p : players) {
+                if (p.getName().equals(winnerName)) {
+                    winner = p;
+                    break;
+                }
+            }
+
+            if (winner != null) {
+                // Tính tiền: Người thắng nhận tất cả tiền từ người thua
+                long winningSAmount = betAmount * (players.size() - 1);
+                
+                // Cộng tiền cho người thắng
+                winner.addBalance(winningSAmount);
+                
+                // Trừ tiền từ những người thua
+                UserManager userManager = UserManager.getInstance();
+                for (Player p : players) {
+                    if (!p.getName().equals(winnerName)) {
+                        p.subtractBalance(betAmount);
+                        userManager.subtractBalance(p.getName(), betAmount);
+                    }
+                }
+                // Cộng tiền cho người thắng trong database
+                userManager.addBalance(winnerName, winningSAmount);
+                
+                System.out.println("🏆 " + winnerName + " won! Earned: " + winningSAmount + " VND");
+            }
+        }
+
+        // Gửi thông báo kết thúc ván kèm theo balances cập nhật
+        StringBuilder balanceData = new StringBuilder();
+        for (int i = 0; i < players.size(); i++) {
+            balanceData.append(players.get(i).getName()).append(":").append(players.get(i).getBalance());
+            if (i < players.size() - 1) balanceData.append(",");
+        }
+        Message ms = new Message("WIN", winnerName + "|" + balanceData.toString());
+        for (Player p : players) {
+            p.setPlaying(false);
+            connections.get(p).sendMessage(Protocol.encode(ms));
+        }
+        
+        // Broadcast updated player list with new balances
+        broadcastPlayerList();
+        
         setGameRunning(false);
         lastMove = null;
         passedPlayers.clear();
+        resetPot();
     }
 }
