@@ -6,8 +6,14 @@ import java.util.List;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import tienlen.model.Message;
 import tienlen.utils.Protocol;
+import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.File;
 
 public class ServerListener implements Runnable {
 
@@ -111,6 +117,21 @@ public class ServerListener implements Runnable {
                     continue;
                 }
                 
+                if (ms.getAction().equals(Protocol.BALANCE)) {
+                    String balanceStr = ms.getData();
+                    try {
+                        long balance = Long.parseLong(balanceStr);
+                        Platform.runLater(() -> {
+                            if (tableSelectionUI != null) {
+                                tableSelectionUI.updateBalance(balance);
+                            }
+                        });
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid balance: " + balanceStr);
+                    }
+                    continue;
+                }
+                
                 if (ms.getAction().equals(Protocol.LOGIN_FAILED)) {
                     String error = ms.getData();
                     Platform.runLater(() -> {
@@ -133,6 +154,13 @@ public class ServerListener implements Runnable {
                             String sessionData = ms.getData();
                             Platform.runLater(() -> {
                                 tableSelectionUI.updateSessionList(sessionData);
+                            });
+                            continue;
+                        }
+                        case Protocol.SESSION_DETAILS: {
+                            String detailsData = ms.getData();
+                            Platform.runLater(() -> {
+                                tableSelectionUI.updateSessionDetails(detailsData);
                             });
                             continue;
                         }
@@ -248,8 +276,64 @@ public class ServerListener implements Runnable {
                             Platform.runLater(() -> gameTable.getChatArea().appendText(msg + "\n"));
                             break;
                         }
+                        case Protocol.CHAT_VOICE: {
+                            String data = ms.getData();
+                            String[] parts = data.split("\\|", 2);
+                            if (parts.length < 2) break;
+                            String sender = parts[0];
+                            String b64 = parts[1];
+                            try {
+                                byte[] wavBytes = Base64.getDecoder().decode(b64);
+                                Path tmp = Files.createTempFile("tienlen_voice_", ".wav");
+                                Files.write(tmp, wavBytes);
+                                File f = tmp.toFile();
+                                Platform.runLater(() -> {
+                                    gameTable.getChatArea().appendText("[Voice] " + sender + " sent a voice message\n");
+                                    try {
+                                        Media media = new Media(f.toURI().toString());
+                                        MediaPlayer player = new MediaPlayer(media);
+                                        player.play();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        }
                         case "NOTIFICATION": {
                             System.out.println(ms.getData());
+                            break;
+                        }
+                        case "KICKED": {
+                            String reason = ms.getData();
+                            Platform.runLater(() -> {
+                                Alert alert = new Alert(Alert.AlertType.WARNING);
+                                alert.setTitle("Bị loại khỏi phòng");
+                                alert.setHeaderText(null);
+                                alert.setContentText(reason);
+                                alert.showAndWait();
+                                // Trở về màn hình chọn bàn
+                                if (clientFX != null) {
+                                    clientFX.returnToTableSelection();
+                                }
+                            });
+                            break;
+                        }
+                        case Protocol.SESSION_CLOSED: {
+                            String data = ms.getData();
+                            String[] parts = data.split("\\|", 2);
+                            String sessId = parts.length > 0 ? parts[0] : "";
+                            String reason = parts.length > 1 ? parts[1] : "Session closed";
+                            Platform.runLater(() -> {
+                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                alert.setTitle("Session Closed");
+                                alert.setHeaderText(null);
+                                alert.setContentText("Session " + sessId + " closed: " + reason);
+                                alert.showAndWait();
+                                if (clientFX != null) clientFX.returnToTableSelection();
+                            });
                             break;
                         }
                     }

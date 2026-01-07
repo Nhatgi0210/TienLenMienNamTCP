@@ -22,11 +22,23 @@ public class ServerBackend {
         isRunning = true;
         ui.appendLog("✅ Server started on port " + PORT);
 
-        // Tạo 2 bàn mẫu khi server khởi động
-        GameSession s1 = new GameSession("bàn 1");
-        GameSession s2 = new GameSession("bàn 2");
-        gameSessions.add(s1);
-        gameSessions.add(s2);
+        // Tải danh sách bàn chơi từ database
+        UserManager userManager = UserManager.getInstance();
+        java.util.List<java.util.Map<String, Object>> sessionsFromDb = userManager.loadActiveSessions();
+        
+        for (java.util.Map<String, Object> sessionData : sessionsFromDb) {
+            String sessionId = (String) sessionData.get("session_id");
+            String displayName = (String) sessionData.get("display_name");
+            long betAmount = (long) sessionData.get("bet_amount");
+            
+            GameSession session = new GameSession(sessionId, displayName, betAmount);
+            gameSessions.add(session);
+            ui.appendLog("📋 Loaded session from DB: " + displayName + " (ID: " + sessionId + ")");
+        }
+        
+        if (sessionsFromDb.isEmpty()) {
+            ui.appendLog("ℹ️ No active sessions found in database");
+        }
 
         while (isRunning) {
             try {
@@ -75,6 +87,22 @@ public class ServerBackend {
         return new ArrayList<>(onlinePlayers.values());
     }
 
+    public List<PlayerInfo> getAllPlayersWithOffline() {
+        List<PlayerInfo> allPlayers = new ArrayList<>(onlinePlayers.values());
+        UserManager userManager = UserManager.getInstance();
+        java.util.List<String> allUsers = userManager.getAllUsers();
+        
+        // Add offline players (users not in onlinePlayers)
+        for (String username : allUsers) {
+            if (!onlinePlayers.containsKey(username)) {
+                PlayerInfo offlinePlayer = new PlayerInfo(username, "N/A");
+                offlinePlayer.setStatus("OFFLINE");
+                allPlayers.add(offlinePlayer);
+            }
+        }
+        return allPlayers;
+    }
+
     public List<SessionInfo> getAllSessions() {
         List<SessionInfo> sessionInfos = new ArrayList<>();
         for (GameSession session : gameSessions) {
@@ -120,6 +148,10 @@ public class ServerBackend {
             // Gửi message kick đến player
             ClientHandler handler = clientHandlers.get(username);
             if (handler != null) {
+                // Gửi thông báo KICKED trước khi đóng connection
+                tienlen.model.Message msg = new tienlen.model.Message("KICKED", "Bạn đã bị loại khỏi server bởi admin");
+                handler.sendMessage(tienlen.utils.Protocol.encode(msg));
+                // Đóng connection
                 handler.closeConnection();
             }
             unregisterPlayer(username);
@@ -148,10 +180,18 @@ public class ServerBackend {
     public void closeSession(String sessionId) {
         GameSession session = findSessionById(sessionId);
         if (session != null) {
-            // Notify all players in this session
-            for (tienlen.model.Player player : session.getPlayers()) {
-                unregisterPlayerFromSession(player.getName());
+            // Notify all players in this session and set them to IDLE
+            for (tienlen.model.Player player : new ArrayList<>(session.getPlayers())) {
+                String playerName = player.getName();
+                // send SESSION_CLOSED message to client if connected
+                ClientHandler handler = clientHandlers.get(playerName);
+                if (handler != null) {
+                    tienlen.model.Message msg = new tienlen.model.Message(tienlen.utils.Protocol.SESSION_CLOSED, sessionId + "|Closed by server");
+                    handler.sendMessage(tienlen.utils.Protocol.encode(msg));
+                }
+                unregisterPlayerFromSession(playerName);
             }
+            // remove session from list
             gameSessions.remove(session);
         }
     }

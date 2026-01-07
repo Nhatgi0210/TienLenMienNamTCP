@@ -110,6 +110,11 @@ public class ClientHandler implements Runnable {
             		handleSelectSession(sessionId);
             		break;
             	}
+            	case Protocol.GET_SESSION_DETAILS: {
+            		String sessionId = ms.getData();
+            		handleGetSessionDetails(sessionId);
+            		break;
+            	}
             	case "CREATE_SESSION": {
                     // Có thể gửi data: name=...&bet=...
                     String data = ms.getData();
@@ -160,6 +165,13 @@ public class ClientHandler implements Runnable {
 				    	gameSession.chat(chatMsg);
 				    }
 				    break;
+                    case "CHAT_VOICE": {
+                        String voiceData = ms.getData();
+                        if (gameSession != null) {
+                            gameSession.chatVoice(voiceData, this);
+                        }
+                        break;
+                    }
                 case "LEAVE_SESSION": {
                     if (gameSession != null && player != null) {
                         gameSession.removePlayer(player);
@@ -180,6 +192,11 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.out.println("⚠ Kết nối không thành công với " + currentUsername + ": " + e.getMessage());
         } finally {
+            // Xóa player session khỏi database
+            if (currentUsername != null) {
+                UserManager.getInstance().deletePlayerSession(currentUsername);
+            }
+            
             // Luôn remove khi client thoát
             if (gameSession != null && player != null) {
                 gameSession.removePlayer(player);
@@ -195,6 +212,11 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleGetSessions() {
+        // Gửi balance cho client trước tiên
+        UserManager userManager = UserManager.getInstance();
+        long balance = userManager.getBalance(currentUsername);
+        sendMessage(Protocol.encode(new Message(Protocol.BALANCE, String.valueOf(balance))));
+        
         String sessionInfo = "";
         
         if (server != null) {
@@ -321,13 +343,21 @@ public class ClientHandler implements Runnable {
         if (userManager.loginUser(username, password)) {
             this.currentUsername = username;
             
+            // Tạo player session trong database
+            String clientIp = socket.getInetAddress().getHostAddress();
+            userManager.createPlayerSession(username, clientIp);
+            
             // Đăng ký player trong backend nếu có
             if (backend != null) {
-                String clientIp = socket.getInetAddress().getHostAddress();
                 backend.registerPlayer(username, clientIp, this);
             }
             
             sendMessage(Protocol.encode(new Message(Protocol.LOGIN_SUCCESS, username)));
+            
+            // Gửi balance cho client
+            long balance = userManager.getBalance(username);
+            sendMessage(Protocol.encode(new Message(Protocol.BALANCE, String.valueOf(balance))));
+            
             // Gửi danh sách bàn cho client
             handleGetSessions();
         } else {
@@ -344,5 +374,32 @@ public class ClientHandler implements Runnable {
             }
         }
         return map;
+    }
+    
+    private void handleGetSessionDetails(String sessionId) {
+        GameSession session = null;
+        
+        if (server != null) {
+            session = server.findSessionById(sessionId);
+        } else if (backend != null) {
+            session = backend.findSessionById(sessionId);
+        }
+        
+        if (session == null) {
+            sendMessage(Protocol.encode(new Message("ERROR", "Session not found")));
+            return;
+        }
+        
+        // Xây dựng dữ liệu chi tiết session: playerName1,balance1;playerName2,balance2;...
+        StringBuilder sb = new StringBuilder();
+        List<Player> players = session.getPlayers();
+        for (int i = 0; i < players.size(); i++) {
+            if (i > 0) sb.append(";");
+            Player p = players.get(i);
+            sb.append(p.getName()).append(",").append(p.getBalance());
+        }
+        
+        Message response = new Message(Protocol.SESSION_DETAILS, sb.toString());
+        sendMessage(Protocol.encode(response));
     }
 }

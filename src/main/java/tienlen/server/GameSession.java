@@ -78,11 +78,36 @@ public class GameSession {
 
     public GameSession() {
         this.sessionId = UUID.randomUUID().toString();
+        // Save session to database
+        UserManager userManager = UserManager.getInstance();
+        userManager.createGameSession(this.sessionId, this.displayName, this.betAmount);
     }
+
+    // Constructor with custom display name and bet amount
+    public GameSession(String displayName, long betAmount) {
+        this.sessionId = UUID.randomUUID().toString();
+        this.displayName = displayName;
+        this.betAmount = betAmount;
+        // Save session to database
+        UserManager userManager = UserManager.getInstance();
+        userManager.createGameSession(this.sessionId, this.displayName, this.betAmount);
+    }
+
 
     public GameSession(String displayName) {
         this.sessionId = UUID.randomUUID().toString();
         this.displayName = displayName;
+        // Save session to database
+        UserManager userManager = UserManager.getInstance();
+        userManager.createGameSession(this.sessionId, this.displayName, this.betAmount);
+    }
+
+    // Constructor để load session từ database (không save lại)
+    public GameSession(String sessionId, String displayName, long betAmount) {
+        this.sessionId = sessionId;
+        this.displayName = displayName;
+        this.betAmount = betAmount;
+        // Session đã tồn tại trong database, không cần save lại
     }
 
     public String getDisplayName() {
@@ -122,6 +147,11 @@ public class GameSession {
     	if (gameRunning) return;
       	if (players.size() < 2) return;
       	gameRunning = true;
+      	
+      	// Update session status to PLAYING in database
+      	UserManager userManager = UserManager.getInstance();
+      	userManager.updateSessionStatus(sessionId, "PLAYING");
+      	
     	lastMove = null;
     	for (Player p : players) {
             p.getHand().clear();
@@ -305,6 +335,17 @@ public class GameSession {
 	        connections.get(p).sendMessage(Protocol.encode(new Message("CHAT", msg)));
 	    }
     }
+
+    public void chatVoice(String data, ClientHandler sender) {
+        // data expected: senderName|base64AudioWav
+        // Send to all players except the sender
+        for (Player p : players) {
+            if (connections.get(p) != sender) {
+                connections.get(p).sendMessage(Protocol.encode(new Message(Protocol.CHAT_VOICE, data)));
+            }
+        }
+    }
+    
     public synchronized void removePlayer(Player player) {
         players.remove(player);
         connections.remove(player);
@@ -340,10 +381,17 @@ public class GameSession {
                     if (!p.getName().equals(winnerName)) {
                         p.subtractBalance(betAmount);
                         userManager.subtractBalance(p.getName(), betAmount);
+                        // Lưu kết quả người thua vào database
+                        userManager.saveGameResult(sessionId, p.getName(), "LOSE", betAmount, 0);
                     }
                 }
                 // Cộng tiền cho người thắng trong database
                 userManager.addBalance(winnerName, winningSAmount);
+                // Lưu kết quả người thắng vào database
+                userManager.saveGameResult(sessionId, winnerName, "WIN", betAmount, winningSAmount);
+                
+                // Update game session status in database
+                userManager.endGameSession(sessionId, winnerName, totalPot);
                 
                 System.out.println("🏆 " + winnerName + " won! Earned: " + winningSAmount + " VND");
             }

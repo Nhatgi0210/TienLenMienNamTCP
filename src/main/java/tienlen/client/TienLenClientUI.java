@@ -1,6 +1,8 @@
 package tienlen.client;
 
 import javafx.animation.FadeTransition;
+import javafx.animation.TranslateTransition;
+import javafx.animation.ScaleTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -20,6 +22,12 @@ import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sound.sampled.*;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.IOException;
 
 public class TienLenClientUI{
 
@@ -30,6 +38,7 @@ public class TienLenClientUI{
     private TextArea chatArea;
     private TextField chatInput;
     private Button sendButton;
+    private Button voiceButton;
     private Button playButton;
     private Button passButton;
     private Move lastMove = null;
@@ -48,6 +57,7 @@ public class TienLenClientUI{
     public TextArea getChatArea() { return chatArea; }
     public List<VBox> getPlayerBoxes(){return playerBoxes;}
     private String currentTurn = null;
+    private javafx.animation.Animation currentTurnAnimation = null;
 
     // Map tên -> VBox playerBox
     private final List<VBox> playerBoxes = new ArrayList<>();
@@ -59,6 +69,10 @@ public class TienLenClientUI{
     private String sessionDisplayName = "";
     private long sessionBet = 10000;
     private Runnable onExit;
+
+    // Audio recording
+    private volatile boolean recording = false;
+    private TargetDataLine targetLine;
 
     public TienLenClientUI(PrintWriter out, BufferedReader in, String username) {
         this.out = out;
@@ -86,13 +100,21 @@ public class TienLenClientUI{
 	
     // Tạo avatar + tên + số dư cho người chơi
     private VBox createPlayerBox(String name) {
-        Circle avatar = new Circle(25, Color.LIGHTGRAY);
+        Circle avatar = new Circle(30, Color.web("#2196F3"));
+        avatar.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0, 0, 2);");
+        
         Label nameLabel = new Label(name);
-        Label balanceLabel = new Label("0");
+        nameLabel.getStyleClass().add("player-name");
+        
+        Label balanceLabel = new Label("0 VND");
+        balanceLabel.getStyleClass().add("player-balance");
+        
+        Label statusLabel = new Label("");
+        statusLabel.getStyleClass().add("player-status");
 
-        VBox box = new VBox(5, avatar, nameLabel, balanceLabel);
+        VBox box = new VBox(5, avatar, nameLabel, balanceLabel, statusLabel);
         box.setAlignment(Pos.CENTER);
-        box.setPadding(new Insets(10));
+        box.setPadding(new Insets(12));
         box.getStyleClass().add("player-box");
 
         return box;
@@ -104,6 +126,13 @@ public class TienLenClientUI{
         for (String c : cards) {
             Label card = new Label(c);
             card.getStyleClass().add("played-card");
+            card.setAlignment(Pos.CENTER);
+            card.setPrefWidth(65);
+            card.setPrefHeight(95);
+            card.setMinWidth(65);
+            card.setMinHeight(95);
+            card.setMaxWidth(65);
+            card.setMaxHeight(95);
 
             FadeTransition ft = new FadeTransition(Duration.millis(500), card);
             ft.setFromValue(0);
@@ -148,23 +177,31 @@ public class TienLenClientUI{
         BorderPane.setAlignment(rightPlayerBox, Pos.CENTER_RIGHT);
 
         root.setLeft(leftPlayerBox);
+        
         // Create a top bar with info box on the left and the top player box to its right
-        HBox infoBox = new HBox(8);
-        infoBox.setPadding(new Insets(6));
-        infoBox.setStyle("-fx-background-color: rgba(255,255,255,0.95); -fx-border-color: #ccc; -fx-border-radius: 6; -fx-background-radius: 6;");
-        Label nameLabel = new Label(sessionDisplayName == null || sessionDisplayName.isEmpty() ? "Bàn" : sessionDisplayName);
-        nameLabel.setStyle("-fx-font-weight: bold;");
-        Label betLabel = new Label("💰 " + sessionBet + " VND");
-        Button exitBtn = new Button("Exit");
+        HBox infoBox = new HBox(15);
+        infoBox.setPadding(new Insets(10, 15, 10, 15));
+        infoBox.getStyleClass().add("info-box");
+        infoBox.setAlignment(Pos.CENTER_LEFT);
+        
+        Label nameLabel = new Label(sessionDisplayName == null || sessionDisplayName.isEmpty() ? "🎴 Bàn" : "🎴 " + sessionDisplayName);
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+        
+        Label betLabel = new Label("💰 Cược: " + sessionBet + " VND");
+        betLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px;");
+        
+        Button exitBtn = new Button("Thoát");
+        exitBtn.getStyleClass().add("info-button");
         exitBtn.setOnAction(e -> {
             try { out.println(Protocol.encode(new Message("LEAVE_SESSION", ""))); } catch (Exception ex) {}
             if (onExit != null) onExit.run();
         });
+        
         infoBox.getChildren().addAll(nameLabel, betLabel, exitBtn);
 
-        HBox topBar = new HBox(12, infoBox, topPlayerBox);
+        HBox topBar = new HBox(15, infoBox, topPlayerBox);
         topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setPadding(new Insets(4));
+        topBar.setPadding(new Insets(8));
         topBar.setFillHeight(true);
         HBox.setHgrow(topBar, Priority.ALWAYS);
         
@@ -176,26 +213,33 @@ public class TienLenClientUI{
         root.setTop(topBar);
 
         // === Khu vực bài của người chơi ===
-        playerHand = new HBox(10);
-        playerHand.setAlignment(Pos.CENTER);
-        playerHand.setPadding(new Insets(10));
+        playerHand = new HBox(3);
+        playerHand.setAlignment(Pos.CENTER_LEFT);
+        playerHand.setPadding(new Insets(10, 15, 10, 15));
         playerHand.getStyleClass().add("player-hand");
-
-        // Test card
-       
+        playerHand.setPrefHeight(160);
+        
+        // ScrollPane for hand
+        ScrollPane handScroll = new ScrollPane(playerHand);
+        handScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        handScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        handScroll.setFitToHeight(true);
+        handScroll.setPannable(true);
 
         // Nút Play / Pass
-        HBox controlBox = new HBox(10);
+        HBox controlBox = new HBox(12);
         controlBox.setAlignment(Pos.CENTER);
-        controlBox.setPadding(new Insets(5));
-        playButton = new Button("Play");
-        passButton = new Button("Pass");
+        controlBox.setPadding(new Insets(10));
+        controlBox.setStyle("-fx-background-color: rgba(0,0,0,0.2); -fx-border-radius: 8; -fx-background-radius: 8;");
+        
+        playButton = new Button("Đánh Bài");
+        passButton = new Button("Bỏ Qua");
         playButton.getStyleClass().add("control-btn");
         passButton.getStyleClass().add("control-btn");
         passButton.setOnAction(e -> passTurn());
         playButton.setOnAction(e -> playSelectedCards());
         
-        newGameButton = new Button("New Game");
+        newGameButton = new Button("Ván Mới");
         newGameButton.getStyleClass().add("control-btn");
         newGameButton.setVisible(true);    
         newGameButton.setManaged(true);   
@@ -208,68 +252,104 @@ public class TienLenClientUI{
             newGameButton.setManaged(false);
         });
         
-        controlBox.getChildren().addAll(playButton, passButton,newGameButton);
+        controlBox.getChildren().addAll(playButton, passButton, newGameButton);
 
-            // === Tạo player box cho chính mình (góc dưới trái) ===
-            Circle myAvatar = new Circle(25, Color.LIGHTBLUE);
-            myNameLabel = new Label(username);
-            myNameLabel.setStyle("-fx-font-weight: bold;");
-            myBalanceLabel = new Label("0 VND");
-            myPlayerBox = new VBox(5, myAvatar, myNameLabel, myBalanceLabel);
-            myPlayerBox.setAlignment(Pos.CENTER);
-            myPlayerBox.setPadding(new Insets(10));
-            myPlayerBox.getStyleClass().add("player-box");
-            myPlayerBox.setStyle("-fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5;");
+        // === Tạo player box cho chính mình (góc dưới trái) ===
+        Circle myAvatar = new Circle(30, Color.web("#00BCD4"));
+        myAvatar.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0, 0, 2);");
+        
+        myNameLabel = new Label(username);
+        myNameLabel.getStyleClass().add("player-name");
+        
+        myBalanceLabel = new Label("0 VND");
+        myBalanceLabel.getStyleClass().add("player-balance");
+        
+        Label myStatusLabel = new Label("Sẵn sàng");
+        myStatusLabel.getStyleClass().add("player-status");
+        
+        myPlayerBox = new VBox(5, myAvatar, myNameLabel, myBalanceLabel, myStatusLabel);
+        myPlayerBox.setAlignment(Pos.CENTER);
+        myPlayerBox.setPadding(new Insets(12));
+        myPlayerBox.getStyleClass().add("player-box");
+        playerBoxes.add(myPlayerBox); // Thêm vào danh sách để nhận hiệu ứng turn
 
-            // Layout dưới cùng: player box bên trái + kiểm soát ở giữa + bài ở dưới
-            VBox centerControlBox = new VBox(10, controlBox, playerHand);
-            centerControlBox.setAlignment(Pos.CENTER);
-            centerControlBox.setFillWidth(true);
+        // Layout dưới cùng: player box bên trái + kiểm soát ở giữa + bài ở dưới
+        VBox centerControlBox = new VBox(12, controlBox, handScroll);
+        centerControlBox.setAlignment(Pos.CENTER);
+        centerControlBox.setFillWidth(true);
+        VBox.setVgrow(handScroll, Priority.ALWAYS);
 
-            HBox bottomBox = new HBox(15);
-            bottomBox.setAlignment(Pos.BOTTOM_LEFT);
-            bottomBox.setPadding(new Insets(10));
-            bottomBox.getChildren().addAll(myPlayerBox, centerControlBox);
-            HBox.setHgrow(centerControlBox, Priority.ALWAYS);
+        HBox bottomBox = new HBox(15);
+        bottomBox.setAlignment(Pos.BOTTOM_LEFT);
+        bottomBox.setPadding(new Insets(10));
+        bottomBox.getChildren().addAll(myPlayerBox, centerControlBox);
+        HBox.setHgrow(centerControlBox, Priority.ALWAYS);
 
-            root.setBottom(bottomBox);
+        root.setBottom(bottomBox);
 
         // === Khung Chat + DS người chơi (chia đôi dọc) ===
-        VBox rightPane = new VBox();
-        rightPane.setPrefWidth(250);
+        VBox rightPane = new VBox(10);
+        rightPane.setPrefWidth(280);
 
-        chatArea = new TextArea("Trò chơi sẽ bắt đầu khi có hơn 2 người chơi\n");
+        Label chatLabel = new Label("💬 TRÒ CHUYỆN");
+        chatLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
+        
+        chatArea = new TextArea("🎮 Trò chơi sẽ bắt đầu khi có đủ 2 người chơi\n");
         chatArea.setEditable(false);
         chatArea.setWrapText(true);
+        chatArea.getStyleClass().add("chat-area");
 
         chatInput = new TextField();
-        sendButton = new Button("Send");
-
-     // Trong createRootPane() sau khi tạo sendButton
+        chatInput.getStyleClass().add("chat-input");
+        chatInput.setPromptText("Nhập tin nhắn...");
+        
+        sendButton = new Button("Gửi");
+        sendButton.getStyleClass().add("chat-button");
         sendButton.setOnAction(e -> sendChat());
         chatInput.setOnAction(e -> sendChat());
 
-        HBox chatInputBox = new HBox(5, chatInput, sendButton);
+        voiceButton = new Button("🎙️");
+        voiceButton.getStyleClass().add("voice-button");
+        voiceButton.setPrefWidth(45);
+        voiceButton.setOnAction(e -> {
+            if (!recording) startRecording();
+            else stopRecordingAndSend();
+        });
+
+        HBox chatInputBox = new HBox(8, chatInput, sendButton, voiceButton);
         chatInputBox.setAlignment(Pos.CENTER);
+        chatInputBox.setPadding(new Insets(8));
+        HBox.setHgrow(chatInput, Priority.ALWAYS);
 
-        chatBox = new VBox(5, new Label("Chat"), chatArea, chatInputBox);
-        chatBox.setAlignment(Pos.CENTER_LEFT);
-        chatBox.setPadding(new Insets(10));
+        chatBox = new VBox(8, chatLabel, chatArea, chatInputBox);
+        chatBox.setAlignment(Pos.TOP_LEFT);
+        chatBox.setPadding(new Insets(12));
         chatBox.getStyleClass().add("chat-box");
+        VBox.setVgrow(chatArea, Priority.ALWAYS);
 
-        playerListBox = new VBox(5);
+        Label playerListLabel = new Label("👥 NGƯỜI CHƠI");
+        playerListLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
+        
+        playerListBox = new VBox(8);
         playerListBox.setAlignment(Pos.TOP_LEFT);
-        playerListBox.setPadding(new Insets(10));
+        playerListBox.setPadding(new Insets(12));
         playerListBox.getStyleClass().add("player-list");
+        
+        ScrollPane playerListScroll = new ScrollPane(playerListBox);
+        playerListScroll.setFitToWidth(true);
+        playerListScroll.setPrefHeight(150);
+        
+        VBox playerListContainer = new VBox(5, playerListLabel, playerListScroll);
+        VBox.setVgrow(playerListScroll, Priority.ALWAYS);
 
         VBox.setVgrow(chatBox, Priority.ALWAYS);
-        VBox.setVgrow(playerListBox, Priority.ALWAYS);
-        rightPane.getChildren().addAll(chatBox, playerListBox);
+        rightPane.getChildren().addAll(chatBox, playerListContainer);
 
         /// Gom player bên phải + chat + danh sách vào chung VBox
-        VBox outerRight = new VBox(10, rightPlayerBox, rightPane);
+        VBox outerRight = new VBox(12, rightPlayerBox, rightPane);
         outerRight.setAlignment(Pos.TOP_CENTER);
-        outerRight.setPadding(new Insets(5));
+        outerRight.setPadding(new Insets(8));
+        VBox.setVgrow(rightPane, Priority.ALWAYS);
 
         root.setRight(outerRight);
 
@@ -334,10 +414,39 @@ public class TienLenClientUI{
     public void highlightTurn(String currentPlayer) {
     	if(currentPlayer == null) return;
     	this.currentTurn = currentPlayer;
+    	
+    	// Dừng animation cũ nếu có
+    	if (currentTurnAnimation != null) {
+    		currentTurnAnimation.stop();
+    	}
+    	
     	for (VBox box : playerBoxes) {
             Label nameLabel = (Label) box.getChildren().get(1); 
             if (nameLabel.getText().equals(currentPlayer)) {
-                box.setStyle("-fx-border-color: gold; -fx-border-width: 3; -fx-background-color: #fff8dc;");
+                // Áp dụng style với glow effect - background nhạt để text dễ đọc
+                box.setStyle("-fx-border-color: #ffeb3b; -fx-border-width: 3; " +
+                    "-fx-background-color: linear-gradient(to bottom, rgba(255,235,59,0.08), rgba(255,193,7,0.03)); " +
+                    "-fx-effect: dropshadow(gaussian, #ffeb3b, 15, 0.8, 0, 0);");
+                
+                // Thêm animation scale với glow
+                ScaleTransition st = new ScaleTransition(Duration.millis(1200), box);
+                st.setFromX(1.0);
+                st.setToX(1.08);
+                st.setFromY(1.0);
+                st.setToY(1.08);
+                st.setCycleCount(javafx.animation.Animation.INDEFINITE);
+                st.setAutoReverse(true);
+                currentTurnAnimation = st;
+                st.play();
+                
+                // Thông báo
+                if (nameLabel.getText().equals(username)) {
+                    chatArea.appendText("\n🎯 ĐẾN LƯỢT CỦA BẠN!\n");
+                    chatArea.setStyle("-fx-control-inner-background: #fff3cd;");
+                } else {
+                    chatArea.appendText("\n▶ Lượt của: " + currentPlayer + "\n");
+                    chatArea.setStyle("-fx-control-inner-background: transparent;");
+                }
             } else {
                 box.setStyle(""); // reset lại style
             }
@@ -397,10 +506,22 @@ public class TienLenClientUI{
     public void addCardToHand(String cardText) {
         ToggleButton card = new ToggleButton(cardText);
         card.getStyleClass().add("card");
-        card.setOnAction(e -> {
-            if (card.isSelected()) card.setTranslateY(-20);
-            else card.setTranslateY(0);
+        
+        // Thêm animation khi chọn/bỏ chọn
+        card.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                // Khi chọn: nâng lên
+                TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
+                tt.setByY(-15);
+                tt.play();
+            } else {
+                // Khi bỏ chọn: hạ xuống
+                TranslateTransition tt = new TranslateTransition(Duration.millis(150), card);
+                tt.setByY(15);
+                tt.play();
+            }
         });
+        
         cardButtons.add(card);
         playerHand.getChildren().add(card);
     }
@@ -476,6 +597,86 @@ public class TienLenClientUI{
             out.println(Protocol.encode(ms));
             chatInput.clear();
         }
+    }
+
+    private void startRecording() {
+        AudioFormat format = new AudioFormat(16000.0f, 16, 1, true, false);
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+        try {
+            targetLine = (TargetDataLine) AudioSystem.getLine(info);
+            targetLine.open(format);
+            targetLine.start();
+            recording = true;
+            voiceButton.setText("⏹");
+
+            Thread t = new Thread(() -> {
+                try (ByteArrayOutputStream outStream = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[4096];
+                    while (recording) {
+                        int count = targetLine.read(buffer, 0, buffer.length);
+                        if (count > 0) outStream.write(buffer, 0, count);
+                    }
+                    // build wav bytes
+                    byte[] pcm = outStream.toByteArray();
+                    byte[] wav = toWav(pcm, format);
+                    String b64 = Base64.getEncoder().encodeToString(wav);
+                    Message ms = new Message(Protocol.CHAT_VOICE, username + "|" + b64);
+                    out.println(Protocol.encode(ms));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            t.setDaemon(true);
+            t.start();
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopRecordingAndSend() {
+        recording = false;
+        voiceButton.setText("🎙");
+        if (targetLine != null) {
+            targetLine.stop();
+            targetLine.close();
+        }
+    }
+
+    private byte[] toWav(byte[] pcm, AudioFormat format) throws IOException {
+        int channels = format.getChannels();
+        int sampleRate = (int) format.getSampleRate();
+        int bitsPerSample = format.getSampleSizeInBits();
+        int byteRate = sampleRate * channels * bitsPerSample / 8;
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        // RIFF header
+        out.write(new byte[]{'R','I','F','F'});
+        int dataLen = pcm.length + 36;
+        out.write(intToLittleEndian(dataLen));
+        out.write(new byte[]{'W','A','V','E'});
+        // fmt chunk
+        out.write(new byte[]{'f','m','t',' '});
+        out.write(intToLittleEndian(16)); // subchunk1 size
+        out.write(shortToLittleEndian((short)1)); // PCM
+        out.write(shortToLittleEndian((short)channels));
+        out.write(intToLittleEndian(sampleRate));
+        out.write(intToLittleEndian(byteRate));
+        out.write(shortToLittleEndian((short)(channels * bitsPerSample/8)));
+        out.write(shortToLittleEndian((short)bitsPerSample));
+        // data chunk
+        out.write(new byte[]{'d','a','t','a'});
+        out.write(intToLittleEndian(pcm.length));
+        out.write(pcm);
+
+        return out.toByteArray();
+    }
+
+    private byte[] intToLittleEndian(int val) {
+        return new byte[]{(byte)(val & 0xff), (byte)((val>>8)&0xff), (byte)((val>>16)&0xff), (byte)((val>>24)&0xff)};
+    }
+
+    private byte[] shortToLittleEndian(short val) {
+        return new byte[]{(byte)(val & 0xff), (byte)((val>>8)&0xff)};
     }
 
 

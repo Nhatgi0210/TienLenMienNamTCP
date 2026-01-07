@@ -6,7 +6,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.layout.*;	
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -357,7 +357,7 @@ public class ClientFX extends Application {
             showLoginScreen();
         });
         
-        Scene tableScene = new Scene(tableSelectionPane, 600, 500);
+        Scene tableScene = new Scene(tableSelectionPane, 1200, 850);
         primaryStage.setScene(tableScene);
         log("▶ Hiển thị giao diện chọn bàn chơi");
         
@@ -385,12 +385,16 @@ public class ClientFX extends Application {
             Platform.runLater(() -> showTableSelection());
         });
 
-        Scene gameScene = new Scene(gameTable.createRootPane(), 1300, 865);
+        Scene gameScene = new Scene(gameTable.createRootPane(), 1600, 950);
         gameScene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         primaryStage.setScene(gameScene);
         
         // Cập nhật listener để xử lý GAME messages
         universalListener.setGameUI(gameTable, myname);
+    }
+
+    public void returnToTableSelection() {
+        Platform.runLater(this::showTableSelection);
     }
 
  

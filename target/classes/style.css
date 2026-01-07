@@ -1,86 +1,315 @@
+/* ========== PROFESSIONAL GAME TABLE THEME ========== */
 .root {
-    -fx-background-color: linear-gradient(to bottom right, #e3f2fd, #cfd8dc);
+    -fx-background-color: #1a1a2e;
+    -fx-font-family: 'Segoe UI', 'Arial';
 }
 
-/* ==== Player Hand ==== */
-.player-hand {
-    -fx-background-color: rgba(255, 255, 255, 0.85);
-    -fx-padding: 10;
-    -fx-border-color: #90caf9;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-}
-
+/* ========== CARDS ========== */
 .card {
-    -fx-min-width: 80px;
-    -fx-min-height: 110px;
-    -fx-background-color: white;
+    -fx-min-width: 72px;
+    -fx-min-height: 105px;
+    -fx-pref-width: 72px;
+    -fx-pref-height: 105px;
+    -fx-max-width: 72px;
+    -fx-max-height: 105px;
+    
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f5f5f5);
     -fx-border-color: #1976d2;
+    -fx-border-width: 2;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
-    -fx-font-size: 16px;
+    
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
+    -fx-text-fill: #1a1a1a;
+    -fx-text-alignment: center;
+    -fx-content-display: center;
+    -fx-alignment: center;
+    -fx-padding: 5 2 5 2;
+    
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 2, 3);
+    -fx-cursor: hand;
+}
+
+.card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 10, 0, 3, 5);
 }
 
 .card:selected {
-    -fx-border-color: #d32f2f;
-    -fx-border-width: 2px;
+    -fx-border-color: linear-gradient(to right, #ffc107, #ff9800);
+    -fx-border-width: 3;
+    -fx-padding: 5 2 5 2;
+    -fx-effect: dropshadow(gaussian, rgba(255,193,7,0.8), 12, 0, 0, 6);
+    -fx-text-fill: #ff6f00;
 }
 
-/* ==== Played Cards ==== */
-.played-cards {
-    -fx-background-color: rgba(255, 255, 255, 0.6);
-    -fx-padding: 15;
-    -fx-border-color: #64b5f6;
+.card:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
+    -fx-padding: 5 2 5 2;
+}
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
+    -fx-padding: 8 2 2 2;
+}
+    -fx-translate-y: 0;
+}
+
+/* ========== PLAYER HAND ========== */
+.player-hand {
+    -fx-background-color: linear-gradient(to bottom, rgba(52,73,94,0.9), rgba(44,62,80,0.95));
+    -fx-padding: 12 15 12 15;
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
+    -fx-spacing: 3;
+}
+
+/* ========== SCROLL PANE ========== */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar {
+    -fx-background-color: rgba(255,255,255,0.1);
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(25,118,210,0.6);
+    -fx-background-radius: 5;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(25,118,210,0.8);
+}
+
+/* ========== PLAYED CARDS AREA ========== */
+.played-cards {
+    -fx-background-color: linear-gradient(to bottom, rgba(0,128,0,0.15), rgba(0,100,0,0.15));
+    -fx-border-color: #2ecc71;
+    -fx-border-width: 2;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 20;
+    -fx-border-style: dashed;
 }
 
 .played-card {
-    -fx-min-width: 60px;
-    -fx-min-height: 90px;
-    -fx-background-color: white;
-    -fx-border-color: #388e3c;
+    -fx-min-width: 65px;
+    -fx-max-width: 65px;
+    -fx-pref-width: 65px;
+    
+    -fx-min-height: 95px;
+    -fx-max-height: 95px;
+    -fx-pref-height: 95px;
+    
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f0f0f0);
+    -fx-border-color: #27ae60;
+    -fx-border-width: 1.5;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
-    -fx-alignment: center;
-    -fx-font-size: 14px;
+    
+    -fx-font-size: 12px;
     -fx-font-weight: bold;
+    -fx-text-fill: #1a1a1a;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+    -fx-content-display: center;
+    -fx-padding: 5;
+    
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 1, 2);
 }
 
-/* ==== Control Buttons ==== */
+/* ========== CONTROL BUTTONS ========== */
 .control-btn {
-    -fx-background-color: #64b5f6;
+    -fx-background-color: linear-gradient(to bottom, #1976d2, #1565c0);
     -fx-text-fill: white;
     -fx-font-size: 14px;
-    -fx-padding: 8 20 8 20;
-    -fx-background-radius: 8;
+    -fx-font-weight: bold;
+    -fx-padding: 10 28 10 28;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0, 0, 2);
+    -fx-cursor: hand;
 }
 
 .control-btn:hover {
-    -fx-background-color: #42a5f5;
+    -fx-background-color: linear-gradient(to bottom, #2196f3, #1976d2);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 8, 0, 1, 3);
 }
 
-/* ==== Chat Box ==== */
-.chat-box {
-    -fx-background-color: #fdfdfd;
-    -fx-border-color: #90caf9;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
+.control-btn:pressed {
+    -fx-background-color: linear-gradient(to bottom, #1565c0, #0d47a1);
+    -fx-translate-y: 1;
 }
 
-/* ==== Player List ==== */
-.player-list {
-    -fx-background-color: #fdfdfd;
-    -fx-border-color: #90caf9;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-}
-
-/* ==== Player Box (Trái/Trên/Phải) ==== */
+/* ========== PLAYER INFO BOX ========== */
 .player-box {
-    -fx-background-color: rgba(255, 255, 255, 0.7);
-    -fx-border-color: #64b5f6;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
+    -fx-background-color: linear-gradient(to right, rgba(52,73,94,0.9), rgba(44,62,80,0.85));
+    -fx-border-color: #1976d2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+}
+
+.player-box:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0, 0, 3);
+}
+
+.player-box .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 13px;
+}
+
+.player-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: #ffffff;
+}
+
+.player-balance {
+    -fx-font-size: 12px;
+    -fx-text-fill: #c8e6c9;
+}
+
+.player-status {
+    -fx-font-size: 11px;
+    -fx-text-fill: #90caf9;
+}
+
+/* ========== CHAT BOX ========== */
+.chat-box {
+    -fx-background-color: linear-gradient(to bottom, rgba(52,73,94,0.95), rgba(44,62,80,0.95));
+    -fx-border-color: #1976d2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+}
+
+.chat-box .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.chat-area {
+    -fx-control-inner-background: #263238;
+    -fx-text-fill: #e0e0e0;
+    -fx-font-family: 'Consolas', 'Courier New', monospace;
+    -fx-font-size: 11px;
+    -fx-padding: 8;
+    -fx-focus-color: #1976d2;
+}
+
+.chat-input {
+    -fx-control-inner-background: #455a64;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+    -fx-padding: 8;
+    -fx-border-color: #1976d2;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-focus-color: #2196f3;
+}
+
+.chat-input:focused {
+    -fx-control-inner-background: #546e7a;
+    -fx-border-color: #42a5f5;
+}
+
+.chat-button {
+    -fx-background-color: linear-gradient(to bottom, #ff9800, #f57c00);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0, 0, 1);
+}
+
+.chat-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ffb74d, #ff9800);
+}
+
+/* ========== PLAYER LIST ========== */
+.player-list {
+    -fx-background-color: linear-gradient(to bottom, rgba(52,73,94,0.95), rgba(44,62,80,0.95));
+    -fx-border-color: #1976d2;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+}
+
+.player-list .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* ========== INFO BOX (SESSION INFO) ========== */
+.info-box {
+    -fx-background-color: linear-gradient(to right, rgba(76,175,80,0.95), rgba(56,142,60,0.95));
+    -fx-border-color: #2ecc71;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10 15 10 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+}
+
+.info-box .label {
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.info-button {
+    -fx-background-color: #d32f2f;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6 15 6 15;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.info-button:hover {
+    -fx-background-color: #f44336;
+}
+
+/* ========== VOICE BUTTON ========== */
+.voice-button {
+    -fx-background-color: linear-gradient(to bottom, #9c27b0, #7b1fa2);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 4, 0, 0, 1);
+}
+
+.voice-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ba68c8, #9c27b0);
+}
+
+.voice-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, #7b1fa2, #4a148c);
+}
+
+/* ========== TURN INDICATOR ========== */
+.turn-indicator {
+    -fx-text-fill: #ffc107;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
 }
